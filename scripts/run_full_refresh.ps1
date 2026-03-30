@@ -8,6 +8,4 @@ if (-not (Test-Path ".\.venv\Scripts\python.exe")) {
 }
 
 & .\.venv\Scripts\python.exe -m app.ingestion.run_once
-& .\.venv\Scripts\python.exe -m app.features.run_once
-& .\.venv\Scripts\python.exe -m app.models.train_baseline
-
+& .\.venv\Scripts\python.exe -m app.analytics.run_once

@@ -1,19 +1,15 @@
-# Market Lens (Price-Only Model)
+# Market Lens Research
 
-Market Lens is a price-focused market prediction project.
+Market Lens Research is a market research and signal-discovery tool.
 
-The active system does this:
-- ingests market prices from Yahoo Finance
-- builds richer price-only feature snapshots
-- generates future-return labels
-- trains an active LightGBM prediction model
-- runs an internal logistic-regression benchmark on every retrain
-- records candidate LightGBM trials, threshold analysis, and feature importance
-- stores model history so every retrain is tracked digitally
-- serves a dashboard for running and monitoring the workflow
+The active system now focuses on:
+- ingesting market prices from Yahoo Finance
+- building analytics snapshots from price action
+- surfacing market regime, sector leadership, and relative strength
+- scanning for setups like breakouts, pullbacks, and volatility expansion
+- serving a dashboard for daily market research
 
-News-related code remains in the repo as archived experimental work, but it is not part of the active default pipeline.
-Transformer work is deferred until the dataset is redesigned around sequential windows rather than one aggregated snapshot row per ticker/date.
+This repo is no longer centered on prediction accuracy or model experimentation as the main product story. The old model and news stack has been removed from the active codebase so the project can stay focused on research workflow.
 
 ## 1) Setup
 
@@ -24,26 +20,11 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Recommended `.env` settings for the active price-only workflow:
-- `APP_NAME=Market Lens`
+Recommended `.env` settings:
+- `APP_NAME=Market Lens Research`
 - `MARKET_TICKERS=AAPL,MSFT,NVDA,AMZN,GOOGL,META,TSLA,AMD,AVGO,CRM,ORCL,ADBE,NFLX,CSCO,QCOM,JPM,GS,MS,V,MA,UNH,LLY,COST,WMT,KO,PEP,XOM,CVX,CAT,BA,GE,SPY,QQQ,IWM,DIA,XLF,XLK,XLV,XLY,XLI,XLE,XLB,XLU,XLP,TLT,GLD`
 - `MARKET_HISTORY_PERIOD=5y`
 - `MARKET_HISTORY_INTERVAL=1d`
-- `MODEL_TYPE=lightgbm`
-- `PREDICT_HOLD_THRESHOLD=0.6`
-- `ENABLE_NEWS_PIPELINE=false`
-- `TRAINING_FEATURE_SET=price_only`
-- `TRAINING_HORIZON_DAYS=5`
-- `TRAINING_TARGET_RETURN_THRESHOLD=0.004`
-
-LightGBM defaults exposed in config:
-- `LIGHTGBM_NUM_LEAVES=15`
-- `LIGHTGBM_LEARNING_RATE=0.05`
-- `LIGHTGBM_N_ESTIMATORS=200`
-- `LIGHTGBM_MAX_DEPTH=6`
-- `LIGHTGBM_MIN_CHILD_SAMPLES=20`
-- `LIGHTGBM_SUBSAMPLE=0.9`
-- `LIGHTGBM_COLSAMPLE_BYTREE=0.9`
 
 ## 2) Run API
 
@@ -74,19 +55,14 @@ npm run frontend
 Open:
 - `http://127.0.0.1:5173`
 
-The dashboard gives you:
-- market ingestion controls
-- feature/label pipeline controls
-- model training and prediction
-- model run history and metric comparison
-- LightGBM vs logistic benchmark visibility
-- selected LightGBM trial visibility
-- threshold sweep visibility
-- experiment matrix visibility across 1d/3d/5d horizons and 0.2%/0.4%/0.6% targets
-- lightweight strategy scorecard visibility
-- top feature-driver visibility
-- data status and data quality views
-- prediction logs
+The dashboard now gives you:
+- a market overview
+- macro ETF context
+- sector leadership
+- relative-strength leaders and laggards
+- setup scans
+- quick research operations
+- data status and quality views
 - embedded docs
 
 ## 4) Run market ingestion
@@ -98,80 +74,74 @@ python -m app.ingestion.run_once
 Or via API:
 - `POST /ingest/run`
 
-## 5) Run active feature + label pipeline
+## 5) Run analytics refresh
 
 ```bash
-python -m app.features.run_once
+python -m app.analytics.run_once
 ```
 
-This now computes a wider pure-price feature set including:
-- multi-horizon returns: `2d`, `3d`, `5d`, `10d`, `15d`, `20d`
-- moving-average and EMA gaps/crossovers
-- ATR / range features
-- standard and downside volatility
-- RSI, Bollinger z-score, breakout, drawdown
-- trend slopes and up-day ratio
-- richer volume regime features
+This computes the market analytics used by the research desk, including:
+- multi-horizon returns
+- moving-average and EMA structure
+- ATR / range / volatility
+- RSI and Bollinger z-score
+- breakout and drawdown context
+- trend slopes
+- relative strength vs SPY, QQQ, and sector ETFs
+- market and sector correlation context
 
-## 6) Train model
+## 6) Research API
 
-```bash
-python -m app.models.train_baseline
-```
+Research endpoints:
+- `GET /research/overview`
+- `GET /research/rankings?limit=25`
+- `GET /research/scans`
+- `GET /research/summary`
 
-Artifacts are saved in `./artifacts`:
-- `baseline_model.joblib`
-- `baseline_metadata.json`
-- `baseline_model_<version>.joblib`
-- `baseline_metadata_<version>.json`
-- `current_model.json`
+Operational endpoints still used by the dashboard:
+- `GET /health`
+- `POST /ingest/run`
+- `GET /ingest/status`
+- `POST /pipeline/run`
+- `GET /pipeline/status`
+- `GET /data/status`
+- `GET /data/quality`
+- `POST /run/full`
+- `GET /docs/text`
 
-The active artifact is LightGBM by default.
-Logistic regression is still trained inside the routine as a benchmark and is recorded in metadata/history, but it is no longer the active saved model path.
+## 7) Product Direction
 
-The trainer now also records:
-- LightGBM candidate trial results
-- chosen trial parameters
-- threshold sweep analysis
-- top feature importance rows
-- constrained strategy diagnostics with capped daily positions and per-ticker cooldowns
+This repo is intentionally focused on helping a human answer:
+- what parts of the market are strongest?
+- what parts are weakest?
+- which names are outperforming?
+- which setups deserve attention?
 
-Experiment matrix endpoints:
-- `POST /model/experiments/run`
-- `GET /model/experiments/status`
+That means the repo now emphasizes:
+- rankings
+- scans
+- summaries
+- research workflow speed
 
-API endpoints:
-- `POST /model/train`
-- `GET /model/status`
-- `GET /model/history?limit=20`
-- `GET /predict?ticker=SPY`
-- `GET /prediction/logs?limit=100`
-- `POST /run/full?train_model=true`
+More than:
+- predictive accuracy
+- model comparison
+- automated trading claims
 
-## 7) Current operating mode
+## 8) Current Reality
 
-This repo is intentionally price-only focused:
-- news ingestion is disabled by default
-- NLP is not part of the active workflow
-- training defaults to `price_only`
-- LightGBM is the active model type
-- logistic regression remains an internal benchmark
-- model history is stored automatically after each retrain
+The current pivot is centered on a research desk workflow:
+- overview of macro ETFs and sector ETFs
+- relative-strength ranking of equities
+- scanner outputs for breakout, pullback, and volatility-expansion setups
+- daily summary bullets generated from the current market state
 
-## 8) Transformer note
+The active repo is now cleanly centered on market research rather than prediction infrastructure.
 
-Transformer work is intentionally deferred.
-If we revisit that path later, it should be built on a new sequence-style dataset builder rather than the current one-row-per-snapshot setup.
-
-## 9) Current reality
-
-The current richer LightGBM pipeline is operational end to end on a broader 5-year, 46-ticker dataset with relative-strength features against market and sector benchmarks. The default active target is now aligned to the best recent matrix result: 5-day horizon, 0.4% move threshold. In the latest run, LightGBM now slightly beats the logistic benchmark on validation accuracy, F1, and ROC AUC. The repo is in a much healthier place for real model comparison than the earlier small-sample runs.
-
-## 10) Next step
+## 9) Suggested Next Steps
 
 Best next steps for this repo:
-1. use the dashboard experiment matrix to compare horizon / threshold combinations on the richer feature set
-2. keep retraining and use the dashboard to compare LightGBM against logistic fairly
-3. tighten strategy realism further if we want broker-style backtesting later
-4. only revisit transformer work after sequence data is introduced
-
+1. add watchlists and saved ticker views
+2. add stronger market breadth and sector rotation analytics
+3. add export and alerting paths for ranked names and scans
+4. tighten the UI into a cleaner research-terminal style

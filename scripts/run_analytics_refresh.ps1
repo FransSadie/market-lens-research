@@ -7,4 +7,4 @@ if (-not (Test-Path ".\.venv\Scripts\python.exe")) {
     throw "Virtual environment not found at .\.venv. Create it first: python -m venv .venv"
 }
 
-& .\.venv\Scripts\python.exe -m app.nlp.seed_article_hashes
+& .\.venv\Scripts\python.exe -m app.analytics.run_once

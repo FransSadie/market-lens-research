@@ -1,12 +1,12 @@
 from app.core.logging import setup_logging
 from app.db.schema import ensure_schema
-from app.ingestion.historical_news import run_historical_news_import
+from app.analytics.pipeline import run_analytics_refresh
 
 
 def main() -> None:
     setup_logging()
     ensure_schema()
-    result = run_historical_news_import()
+    result = {"analytics_snapshots_updated": run_analytics_refresh(window_hours=24)}
     print(result)
 
 

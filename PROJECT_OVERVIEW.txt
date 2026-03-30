@@ -1,16 +1,15 @@
 PROJECT OVERVIEW (LIVING DOCUMENT)
-Last updated: 2026-03-30 (price-only + richer LightGBM focus)
+Last updated: 2026-03-30 (market research pivot)
 
 ==================================================
 TECHNICAL TERMS
 ==================================================
 
 1) Purpose
-- Build a price-based market prediction pipeline.
-- This repo focuses on price-only modeling.
-- The active training path uses LightGBM.
-- Logistic regression remains an internal benchmark only.
-- Older news-related code remains in the codebase for reference, but it is not part of the active workflow.
+- Build a market research and signal-discovery tool.
+- The active product is no longer centered on model training.
+- The main goal is to surface useful market context quickly:
+  market regime, sector leadership, relative strength, and scan candidates.
 
 2) Active Architecture
 - Backend: FastAPI
@@ -19,77 +18,58 @@ TECHNICAL TERMS
 - DB target: PostgreSQL (SQLite fallback supported)
 - Scheduling: APScheduler
 - Active data source: Yahoo Finance via yfinance
-- Active model family: LightGBM on tabular snapshot features
+- Active analytics style: tabular price analytics and ranking logic
 
 3) Active Data Flow
 - Ingestion layer:
   - Yahoo OHLCV rows -> market_prices
   - every job run logged -> ingestion_runs
-- Feature layer:
-  - rolling aggregation by ticker/window -> feature_snapshots
-  - active emphasis is on pure price features
-  - feature set now includes richer structure signals:
-    multi-horizon returns, EMA gaps, RSI, Bollinger z-score, breakout, drawdown,
-    downside volatility, trend slopes, volume regime features, and new relative-strength features against SPY, QQQ, and sector ETFs
-- Label layer:
-  - future return + binary direction target -> market_labels
-- Model layer:
-  - join features + labels by ticker/date
-  - time-ordered train/validation split
-  - active model: LightGBM
-  - benchmark model: scaled logistic regression
-  - LightGBM candidate trial selection during training
-  - walk-forward evaluation
-  - threshold analysis for hold decisions
-  - top feature importance capture
-  - every retrain stored in model_runs
+- Analytics layer:
+  - rolling per-ticker calculations -> analytics_snapshots
+  - active use is as analytics snapshots, not primarily ML inputs
+  - analytics include:
+    multi-horizon returns, RSI, Bollinger z-score, breakout, drawdown,
+    trend slopes, volume regime features, and relative-strength features against SPY, QQQ, and sector ETFs
+- Research layer:
+  - market overview from macro and sector ETFs
+  - relative-strength leaders and laggards
+  - setup scans: breakout, pullback, volatility expansion
+  - daily summary text assembled from current market state
 - Observability layer:
   - /data/status and /data/quality endpoints
-  - prediction_logs table captures inference usage
 - UI layer:
-  - one-click dashboard for ingestion, feature runs, training, prediction, and model history comparison
-  - model status emphasizes active model type, selected trial, logistic benchmark comparison, feature importance, threshold sweep, and experiment-matrix results
+  - one-click dashboard for overview, rankings, scans, ops, quality, and docs
 
 4) Active Tables
 - market_prices
   - OHLCV rows per ticker/timestamp/interval
-- feature_snapshots
-  - model input rows built from price behavior
-  - includes:
-    price_close, return_1d, price_return_2d, price_return_3d, price_return_5d,
-    price_return_10d, price_return_15d, price_return_20d,
-    ma_gap_5d, ma_gap_20d, ma_crossover_5_20,
-    ema_gap_12d, ema_gap_26d, ema_crossover_12_26,
-    range_pct_1d, atr_14_pct, rolling_volatility_20d, downside_volatility_20d,
-    volatility_regime_60d, volume_zscore_20d, volume_change_5d, volume_ratio_20d,
-    rsi_5, rsi_14, bollinger_z_20, breakout_20d, drawdown_20d,
-    trend_slope_10d, trend_slope_20d, up_day_ratio_10d
-- market_labels
-  - supervised targets from future returns
-- model_runs
-  - stored retrain history with metrics, feature set, horizon, threshold, recommended hold threshold, and full metrics_json
-- prediction_logs
-  - stored prediction calls/results
+- analytics_snapshots
+  - analytics snapshot rows built from price behavior
+  - includes price, trend, volatility, volume, and relative-strength fields
 - ingestion_runs
   - pipeline audit log
+
+Secondary / legacy tables still may exist in the codebase:
+- market_labels
+- model_runs
+- prediction_logs
+- older news-related tables from previous experiments
+
+Those are no longer the center of the product.
 
 5) Active Modules
 - app/ingestion/market_data.py
   - market price download + normalization
 - app/ingestion/pipeline.py
   - active market ingestion flow
-- app/features/pipeline.py
-  - feature aggregation + label generation with expanded price features
-- app/models/dataset.py
-  - training dataframe builder + latest feature lookup
-- app/models/train_baseline.py
-  - active model training, candidate selection, metric generation, threshold analysis, logistic benchmark comparison, feature importance capture, and model-run persistence
-- app/models/inference.py
-  - prediction from latest active model artifact (model-agnostic loader)
+- app/analytics/pipeline.py
+  - analytics snapshot generation
+- app/analytics/market.py
+  - market overview, rankings, scans, and summary assembly
 - app/api/routes.py
-  - API endpoints for the active workflow and model history
+  - API endpoints for research workflow plus operational endpoints
 - frontend/src/App.jsx
-  - dashboard UI with model-run history comparison and active-model summary
+  - research-desk dashboard
 
 6) Active API Endpoints
 - GET /health
@@ -97,70 +77,63 @@ TECHNICAL TERMS
 - GET /ingest/status
 - POST /pipeline/run
 - GET /pipeline/status
-- POST /model/train
-- GET /model/status
-- GET /model/history?limit=20
-- POST /model/experiments/run
-- GET /model/experiments/status
-- GET /predict?ticker=SPY
-- GET /prediction/logs?limit=100
+- GET /research/overview
+- GET /research/rankings?limit=25
+- GET /research/scans
+- GET /research/summary
 - GET /data/status
 - GET /data/quality
-- POST /run/full?train_model=true
+- POST /run/full
 - GET /docs/text
 
 7) Current State
-- The repo behaves as a price-only project by default.
-- LightGBM is the active model path.
-- Logistic regression is retained only as a benchmark inside training metadata/history.
-- Retrains are persisted and surfaced in the UI.
-- The feature set is much richer than the earlier baseline.
-- LightGBM candidate-trial selection now happens automatically during training.
-- The latest run uses a 5-year, 20-ticker dataset and now shows LightGBM slightly beating the logistic benchmark on the main validation metrics.
+- The repo now behaves like a market research product.
+- The frontend is organized around:
+  - overview
+  - rankings
+  - scans
+  - operations
+  - data quality
+  - docs
+- Research outputs are generated from the latest analytics snapshots in the database.
+- The app can already surface useful daily market context from the existing price pipeline.
 
-8) Archived / Optional Work
-- News ingestion, NLP, historical news import, and GDELT normalization still exist in the repo.
-- They are not part of the active default workflow.
-- Treat them as parked experimental infrastructure, not current product scope.
+8) Legacy / Transitional Code
+- Model training, inference, experiment matrix, and older news work may still exist in the repository.
+- They are transitional baggage from the previous repo direction.
+- They are not the primary workflow of this repo anymore.
 
-9) Transformer Status
-- Transformer work is intentionally deferred.
-- A transformer should not be bolted onto the current snapshot table design.
-- If pursued later, it should use a sequence-style dataset builder built around rolling ticker windows.
-
-10) Next Technical Milestones
-- use the built-in experiment matrix to compare target horizons and thresholds using the richer feature set, with the active default now set to 5d / 0.004
-- keep monitoring whether LightGBM can surpass the logistic benchmark
-- tighten constrained strategy summaries toward more realistic backtesting if needed
-- keep transformer work deferred until sequence data exists
+9) Near-Term Product Direction
+- keep improving market overview quality
+- expand relative-strength scoring
+- add market breadth and sector rotation views
+- add watchlists, exports, and alerts
+- continue reducing model-first language and flows from the product
 
 ==================================================
 VERY SIMPLE TERMS
 ==================================================
 
 What this project does now:
-- it downloads stock price data
-- it turns that into richer training rows
-- it trains several LightGBM variants and picks the best one
-- it also trains a logistic model in the background just to compare results
-- it stores every retrain so you can see if the new model is actually better
-- it shows the chosen tree settings, best feature drivers, and threshold sweep in the dashboard
-- it gives predictions in the dashboard
+- downloads market price data
+- turns it into useful research signals
+- shows which sectors and names are strong or weak
+- flags interesting setups
+- gives a quick daily summary of what the market is doing
 
-What this project is not focused on now:
-- it is not mainly a news project anymore
-- it is not doing transformer work yet
-- news tools are still in the repo, but they are parked
+What this project is not mainly about now:
+- it is not mainly a prediction app
+- it is not mainly a model benchmark lab
+- it is not mainly a news pipeline
 
 Simple current reality:
-- the system is better built and better instrumented now
-- the dashboard can now compare whole horizon/threshold grids without manual note-taking
-- and the latest broader-data run now has LightGBM narrowly beating logistic on the main validation numbers
+- this repo is now a market research desk
+- it helps you spot what matters faster
+- it is being cleaned up away from the old prediction-first direction
 
 ==================================================
 UPDATE RULE
 ==================================================
 
 - Keep this file aligned with the active repo direction.
-- If the repo focus changes again, rewrite this document to match the active workflow, not historical experiments.
-
+- If the product focus changes again, rewrite this document to match the active workflow, not the historical experiments.

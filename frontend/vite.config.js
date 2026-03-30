@@ -10,12 +10,10 @@ export default defineConfig({
       "/health": "http://127.0.0.1:8000",
       "/ingest": "http://127.0.0.1:8000",
       "/pipeline": "http://127.0.0.1:8000",
-      "/model": "http://127.0.0.1:8000",
-      "/predict": "http://127.0.0.1:8000",
+      "/research": "http://127.0.0.1:8000",
       "/data": "http://127.0.0.1:8000",
       "/run": "http://127.0.0.1:8000",
-      "/docs": "http://127.0.0.1:8000",
-      "/prediction": "http://127.0.0.1:8000"
+      "/docs": "http://127.0.0.1:8000"
     }
   }
 });
